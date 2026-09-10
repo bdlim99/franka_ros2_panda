@@ -5,13 +5,53 @@
   <xacro:arg name="robot_ip" default=""/> <!-- IP address or hostname of the robot" -->
   <xacro:arg name="use_fake_hardware" default="false"/>
   <xacro:arg name="fake_sensor_commands" default="false"/>
+  <xacro:arg name="special_connection" default=""/> <!-- Connection between the arm and the end-effector -->
+
+  <xacro:property name="special_connection" value="$(arg special_connection)"/>
 
   <xacro:include filename="$(find franka_description)/robots/panda_arm.xacro"/>
   <xacro:panda_arm arm_id="$(arg arm_id)" safety_distance="0.03"/>
 
+  <xacro:if value="${special_connection == ''}">
+    <xacro:property name="ee_xyz" value="0 0 0"/>
+    <xacro:property name="ee_rpy" value="0 0 ${-pi/4}"/>
+    <xacro:property name="ee_connected_to" value="$(arg arm_id)_link8"/>
+  </xacro:if>
+  <xacro:unless value="${special_connection == ''}">
+    <link name="${special_connection}">
+      <xacro:if value="${special_connection == 'robotiq_ft_sensor'}">
+        <visual>
+          <geometry>
+            <mesh filename="package://franka_description/meshes/accessories/robotiq_ft_300.stl" />
+          </geometry>
+          <material name="black">
+            <color rgba="0.1 0.1 0.1 1"/>
+          </material>
+        </visual>
+        <collision>
+          <geometry>
+            <mesh filename="package://franka_description/meshes/accessories/robotiq_ft_300.stl" />
+          </geometry>
+        </collision>
+      </xacro:if>
+    </link>
+
+    <joint name="${special_connection}_joint" type="fixed">
+      <parent link="$(arg arm_id)_link8"/>
+      <child link="${special_connection}"/>
+      <xacro:if value="${special_connection == 'robotiq_ft_sensor'}">
+        <origin xyz="0 0 0.0375" rpy="0 0 ${pi/2}"/>
+      </xacro:if>
+    </joint>
+
+    <xacro:property name="ee_xyz" value="0 0 0.002"/>
+    <xacro:property name="ee_rpy" value="0 0 ${(5/4)*pi}"/>
+    <xacro:property name="ee_connected_to" value="${special_connection}"/>
+  </xacro:unless>
+
   <xacro:if value="$(arg hand)">
     <xacro:include filename="$(find franka_description)/robots/hand.xacro"/>
-    <xacro:hand ns="$(arg arm_id)" rpy="0 0 ${-pi/4}" connected_to="$(arg arm_id)_link8" safety_distance="0.03"/>
+    <xacro:hand ns="$(arg arm_id)" xyz="${ee_xyz}" rpy="${ee_rpy}" connected_to="${ee_connected_to}" safety_distance="0.03"/>
   </xacro:if>
   <xacro:include filename="$(find franka_description)/robots/panda_arm.ros2_control.xacro"/>
   <xacro:panda_arm_ros2_control ns="$(arg arm_id)" robot_ip="$(arg robot_ip)" use_fake_hardware="$(arg use_fake_hardware)" fake_sensor_commands="$(arg fake_sensor_commands)"/>
