@@ -24,6 +24,7 @@
 
 #include <franka/model.h>
 #include <franka/robot.h>
+#include <franka_hardware/collision_behavior.hpp>
 #include <franka_hardware/model.hpp>
 #include <rclcpp/logger.hpp>
 
@@ -52,6 +53,13 @@ class Robot {
    * control or reading loop is currently active.
    */
   virtual void initializeTorqueControl();
+
+  /// Apply thresholds before starting a control or reading loop.
+  virtual void setCollisionBehavior(const CollisionBehavior& behavior) {
+    robot_->setCollisionBehavior(
+      behavior.lower_torque, behavior.upper_torque, behavior.lower_force, behavior.upper_force
+    );
+  }
 
   /**
    * Starts a reading loop of the robot state. Before using this method make sure that no other

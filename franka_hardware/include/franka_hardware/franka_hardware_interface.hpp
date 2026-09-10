@@ -20,6 +20,7 @@
 
 #include <hardware_interface/visibility_control.h>
 #include <franka_hardware/robot.hpp>
+#include <franka_hardware/collision_behavior_parameter_server.hpp>
 
 #include <hardware_interface/hardware_info.hpp>
 #include <hardware_interface/system_interface.hpp>
@@ -57,6 +58,7 @@ class FrankaHardwareInterface : public hardware_interface::SystemInterface {
 
  private:
   std::unique_ptr<Robot> robot_;
+  std::unique_ptr<CollisionBehaviorParameterServer> collision_parameter_server_;
   std::array<double, kNumberOfJoints> hw_commands_{0, 0, 0, 0, 0, 0, 0};
   std::array<double, kNumberOfJoints> hw_positions_{0, 0, 0, 0, 0, 0, 0};
   std::array<double, kNumberOfJoints> hw_velocities_{0, 0, 0, 0, 0, 0, 0};

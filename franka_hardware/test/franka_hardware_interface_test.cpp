@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <franka/exception.h>
 #include <gmock/gmock.h>
 #include <exception>
 #include <rclcpp/rclcpp.hpp>
@@ -35,6 +36,7 @@ class MockModel : public franka_hardware::Model {};
 
 class MockRobot : public franka_hardware::Robot {
  public:
+  MOCK_METHOD(void, setCollisionBehavior, (const franka_hardware::CollisionBehavior&), (override));
   MOCK_METHOD(void, initializeContinuousReading, (), (override));
   MOCK_METHOD(void, stopRobot, (), (override));
   MOCK_METHOD(void, initializeTorqueControl, (), (override));
@@ -396,5 +398,101 @@ TEST(FrankaHardwareInterfaceTest,
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  rclcpp::init(argc, argv);
+  const auto result = RUN_ALL_TESTS();
+  rclcpp::shutdown();
+  return result;
+}
+namespace {
+auto collisionParameters() -> std::unordered_map<std::string, std::string> {
+  return {{"lower_torque_thresholds", "10 11 12 13 14 15 16"},
+          {"upper_torque_thresholds", "20 21 22 23 24 25 26"},
+          {"lower_force_thresholds", "1 2 3 4 5 6"},
+          {"upper_force_thresholds", "11 12 13 14 15 16"}};
+}
+}  // namespace
+
+TEST(CollisionBehaviorTest, RejectsMalformedAndIncompleteConfiguration) {
+  for (const auto& invalid :
+       {"1 2", "1 2 3 4 5 6 7 8", "nan 2 3 4 5 6 7", "inf 2 3 4 5 6 7", "0 2 3 4 5 6 7",
+        "-1 2 3 4 5 6 7", "1 2 3 4 5 6 7garbage"}) {
+    auto parameters = collisionParameters();
+    parameters["lower_torque_thresholds"] = invalid;
+    EXPECT_THROW((franka_hardware::CollisionBehavior{parameters}), std::invalid_argument);
+  }
+  auto parameters = collisionParameters();
+  parameters.erase("upper_force_thresholds");
+  EXPECT_THROW((franka_hardware::CollisionBehavior{parameters}), std::invalid_argument);
+}
+
+TEST(CollisionBehaviorTest, AppliesConfiguredValuesDuringInitialization) {
+  auto info = createHardwareInfo();
+  info.hardware_parameters = collisionParameters();
+  auto robot = std::make_unique<MockRobot>();
+  EXPECT_CALL(*robot, initializeContinuousReading()).Times(0);
+  EXPECT_CALL(*robot, initializeTorqueControl()).Times(0);
+  EXPECT_CALL(*robot, setCollisionBehavior(testing::_))
+      .WillOnce([](const franka_hardware::CollisionBehavior& behavior) {
+        EXPECT_DOUBLE_EQ(behavior.lower_torque[6], 16.0);
+        EXPECT_DOUBLE_EQ(behavior.upper_torque[0], 20.0);
+        EXPECT_DOUBLE_EQ(behavior.lower_force[0], 1.0);
+        EXPECT_DOUBLE_EQ(behavior.upper_force[5], 16.0);
+      });
+  franka_hardware::FrankaHardwareInterface hardware(std::move(robot));
+  EXPECT_EQ(hardware.on_init(info),
+            rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+  auto client_node = std::make_shared<rclcpp::Node>("collision_behavior_test");
+  auto client = std::make_shared<rclcpp::SyncParametersClient>(
+      client_node, "/franka_collision_behavior");
+  ASSERT_TRUE(client->wait_for_service(std::chrono::seconds(5)));
+  const auto parameters = client->get_parameters(
+      {"lower_torque_thresholds", "upper_torque_thresholds",
+       "lower_force_thresholds", "upper_force_thresholds"}, std::chrono::seconds(5));
+  ASSERT_EQ(parameters.size(), 4U);
+  EXPECT_EQ(parameters[0].as_double_array(), (std::vector<double>{10, 11, 12, 13, 14, 15, 16}));
+  EXPECT_EQ(parameters[1].as_double_array(), (std::vector<double>{20, 21, 22, 23, 24, 25, 26}));
+  EXPECT_EQ(parameters[2].as_double_array(), (std::vector<double>{1, 2, 3, 4, 5, 6}));
+  EXPECT_EQ(parameters[3].as_double_array(), (std::vector<double>{11, 12, 13, 14, 15, 16}));
+  const auto result = client->set_parameters(
+      {rclcpp::Parameter("upper_force_thresholds", std::vector<double>(6, 99.0))},
+      std::chrono::seconds(5));
+  ASSERT_EQ(result.size(), 1U);
+  EXPECT_FALSE(result[0].successful);
+}
+
+TEST(CollisionBehaviorTest, InvalidConfigurationDoesNotApply) {
+  auto info = createHardwareInfo();
+  info.hardware_parameters = collisionParameters();
+  info.hardware_parameters["lower_force_thresholds"] = "1 2";
+  auto robot = std::make_unique<MockRobot>();
+  EXPECT_CALL(*robot, setCollisionBehavior(testing::_)).Times(0);
+  franka_hardware::FrankaHardwareInterface hardware(std::move(robot));
+  EXPECT_EQ(hardware.on_init(info),
+            rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
+}
+
+TEST(CollisionBehaviorTest, RobotRejectionAbortsInitialization) {
+  auto info = createHardwareInfo();
+  info.hardware_parameters = collisionParameters();
+  auto robot = std::make_unique<MockRobot>();
+  EXPECT_CALL(*robot, setCollisionBehavior(testing::_))
+      .WillOnce(testing::Throw(franka::CommandException("test rejection")));
+  franka_hardware::FrankaHardwareInterface hardware(std::move(robot));
+  EXPECT_EQ(hardware.on_init(info),
+            rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
+}
+
+TEST(CollisionBehaviorTest, OmittedConfigurationDoesNotApply) {
+  auto robot = std::make_unique<MockRobot>();
+  EXPECT_CALL(*robot, setCollisionBehavior(testing::_)).Times(0);
+  franka_hardware::FrankaHardwareInterface hardware(std::move(robot));
+  EXPECT_EQ(hardware.on_init(createHardwareInfo()),
+            rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+}
+
+TEST(CollisionBehaviorTest, AcceptsLowerThresholdsAboveUpperThresholds) {
+  auto parameters = collisionParameters();
+  parameters["lower_torque_thresholds"] = "99 99 99 99 99 99 99";
+  parameters["lower_force_thresholds"] = "99 99 99 99 99 99";
+  EXPECT_NO_THROW((franka_hardware::CollisionBehavior{parameters}));
 }

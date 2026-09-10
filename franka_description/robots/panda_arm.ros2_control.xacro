@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:macro name="panda_arm_ros2_control" params="ns robot_ip use_fake_hardware:=^|false fake_sensor_commands:=^|false">
+  <xacro:macro name="panda_arm_ros2_control" params="ns robot_ip collision_behavior:='' use_fake_hardware:=^|false fake_sensor_commands:=^|false">
     <ros2_control name="FrankaHardwareInterface" type="system">
       <hardware>
         <xacro:if value="${use_fake_hardware}">
@@ -12,6 +12,13 @@
         <xacro:unless value="${use_fake_hardware}">
           <plugin>franka_hardware/FrankaHardwareInterface</plugin>
           <param name="robot_ip">${robot_ip}</param>
+          <xacro:if value="${collision_behavior != ''}">
+            <xacro:property name="collision_thresholds" value="${xacro.load_yaml(collision_behavior)['collision_behavior']}"/>
+            <param name="lower_torque_thresholds">${' '.join(str(v) for v in collision_thresholds['lower_torque_thresholds'])}</param>
+            <param name="upper_torque_thresholds">${' '.join(str(v) for v in collision_thresholds['upper_torque_thresholds'])}</param>
+            <param name="lower_force_thresholds">${' '.join(str(v) for v in collision_thresholds['lower_force_thresholds'])}</param>
+            <param name="upper_force_thresholds">${' '.join(str(v) for v in collision_thresholds['upper_force_thresholds'])}</param>
+          </xacro:if>
         </xacro:unless>
       </hardware>
 

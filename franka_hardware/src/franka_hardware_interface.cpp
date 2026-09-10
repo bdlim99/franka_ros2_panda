@@ -151,6 +151,16 @@ CallbackReturn FrankaHardwareInterface::on_init(const hardware_interface::Hardwa
                    hardware_interface::HW_IF_EFFORT);
     }
   }
+  // Validate the entire configuration before opening a robot connection.
+  std::unique_ptr<CollisionBehavior> collision_behavior;
+  try {
+    if (CollisionBehavior::isConfigured(info_.hardware_parameters)) {
+      collision_behavior = std::make_unique<CollisionBehavior>(info_.hardware_parameters);
+    }
+  } catch (const std::exception& e) {
+    RCLCPP_FATAL(getLogger(), "Invalid collision behavior: %s", e.what());
+    return CallbackReturn::ERROR;
+  }
   if (!robot_) {
     std::string robot_ip;
     try {
@@ -168,6 +178,17 @@ CallbackReturn FrankaHardwareInterface::on_init(const hardware_interface::Hardwa
       return CallbackReturn::ERROR;
     }
     RCLCPP_INFO(getLogger(), "Successfully connected to robot");
+  }
+  if (collision_behavior) {
+    try {
+      robot_->setCollisionBehavior(*collision_behavior);
+      collision_parameter_server_ =
+          std::make_unique<CollisionBehaviorParameterServer>(*collision_behavior);
+      RCLCPP_INFO(getLogger(), "Applied collision behavior from hardware parameters");
+    } catch (const franka::Exception& e) {
+      RCLCPP_FATAL(getLogger(), "Could not apply collision behavior: %s", e.what());
+      return CallbackReturn::ERROR;
+    }
   }
   return CallbackReturn::SUCCESS;
 }

@@ -1,0 +1,10 @@
+# Choose thresholds for your task and pass this file as collision_behavior.
+# These are example values, not a readback of the robot's current settings.
+# Applies the same thresholds during acceleration/deceleration and nominal motion.
+collision_behavior:
+  # Joint 1..7, Nm. Lower: contact; upper: collision stop.
+  lower_torque_thresholds: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
+  upper_torque_thresholds: [20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0]
+  # Fx, Fy, Fz (N), Mx, My, Mz (Nm).
+  lower_force_thresholds: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
+  upper_force_thresholds: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]

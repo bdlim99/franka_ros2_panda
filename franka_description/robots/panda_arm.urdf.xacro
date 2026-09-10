@@ -2,6 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="panda">
   <xacro:arg name="arm_id" default="panda"/> <!-- Name of this panda -->
   <xacro:arg name="hand" default="false"/> <!-- Should a franka_gripper be mounted at the flange?" -->
+  <xacro:arg name="collision_behavior" default=""/>
   <xacro:arg name="robot_ip" default=""/> <!-- IP address or hostname of the robot" -->
   <xacro:arg name="use_fake_hardware" default="false"/>
   <xacro:arg name="fake_sensor_commands" default="false"/>
@@ -54,5 +55,5 @@
     <xacro:hand ns="$(arg arm_id)" xyz="${ee_xyz}" rpy="${ee_rpy}" connected_to="${ee_connected_to}" safety_distance="0.03"/>
   </xacro:if>
   <xacro:include filename="$(find franka_description)/robots/panda_arm.ros2_control.xacro"/>
-  <xacro:panda_arm_ros2_control ns="$(arg arm_id)" robot_ip="$(arg robot_ip)" use_fake_hardware="$(arg use_fake_hardware)" fake_sensor_commands="$(arg fake_sensor_commands)"/>
+  <xacro:panda_arm_ros2_control collision_behavior="$(arg collision_behavior)" ns="$(arg arm_id)" robot_ip="$(arg robot_ip)" use_fake_hardware="$(arg use_fake_hardware)" fake_sensor_commands="$(arg fake_sensor_commands)"/>
 </robot>
