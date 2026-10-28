@@ -67,6 +67,11 @@ class FrankaHardwareInterface : public hardware_interface::SystemInterface {
   franka::RobotState* hw_franka_robot_state_addr_ = &hw_franka_robot_state_;
   Model* hw_franka_model_ptr_ = nullptr;
 
+  std::array<double, 6> hw_cartesian_velocity_commands_{};
+  const std::array<std::string, 6> cartesian_velocity_names_{"vx", "vy", "vz", "wx", "wy", "wz"};
+  bool cartesian_velocity_interface_claimed_ = false;
+  bool cartesian_velocity_interface_running_ = false;
+
   bool effort_interface_claimed_ = false;
   bool effort_interface_running_ = false;
   static rclcpp::Logger getLogger();

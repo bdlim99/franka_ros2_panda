@@ -28,6 +28,7 @@ find_package(generate_parameter_library)
 add_library(
         ${PROJECT_NAME}
         SHARED
+        src/cartesian_velocity_example_controller.cpp
         src/gravity_compensation_example_controller.cpp
         src/joint_impedance_example_controller.cpp
         src/model_example_controller.cpp
@@ -114,6 +115,10 @@ if(BUILD_TESTING)
     ament_add_gmock(${PROJECT_NAME}_move_to_start_test test/test_move_to_start_example_controller.cpp)
     target_include_directories(${PROJECT_NAME}_move_to_start_test PRIVATE include)
     target_link_libraries(${PROJECT_NAME}_move_to_start_test ${PROJECT_NAME})
+
+    ament_add_gmock(${PROJECT_NAME}_cartesian_velocity_test
+        test/test_cartesian_velocity_example_controller.cpp)
+    target_link_libraries(${PROJECT_NAME}_cartesian_velocity_test ${PROJECT_NAME})
 
     if(CHECK_TIDY)
         find_package(ament_cmake_clang_tidy REQUIRED)

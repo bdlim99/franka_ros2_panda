@@ -54,6 +54,14 @@ class Robot {
    */
   virtual void initializeTorqueControl();
 
+  /// Starts a Cartesian velocity motion generator using libfranka joint impedance control.
+  virtual void initializeCartesianVelocityControl();
+
+  /// Sends [vx, vy, vz, wx, wy, wz] in the base frame (m/s and rad/s).
+  virtual void writeCartesianVelocity(const std::array<double, 6>& velocities);
+
+  [[nodiscard]] virtual bool hasControlError() const { return control_error_; }
+
   /// Apply thresholds before starting a control or reading loop.
   virtual void setCollisionBehavior(const CollisionBehavior& behavior) {
     robot_->setCollisionBehavior(
@@ -108,5 +116,7 @@ class Robot {
   franka::RobotState current_state_;
 
   std::array<double, 7> tau_command_{};
+  std::array<double, 6> cartesian_velocity_command_{};
+  std::atomic_bool control_error_{false};
 };
 }  // namespace franka_hardware

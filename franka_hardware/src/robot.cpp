@@ -15,6 +15,7 @@
 #include <franka_hardware/robot.hpp>
 
 #include <cassert>
+#include <exception>
 #include <mutex>
 
 #include <franka/control_tools.h>
@@ -61,6 +62,7 @@ void Robot::stopRobot() {
 
 void Robot::initializeTorqueControl() {
   assert(isStopped());
+  write({});
   stopped_ = false;
   const auto kTorqueControl = [this]() {
     robot_->control(
@@ -77,6 +79,41 @@ void Robot::initializeTorqueControl() {
         true, franka::kMaxCutoffFrequency);
   };
   control_thread_ = std::make_unique<std::thread>(kTorqueControl);
+}
+
+void Robot::writeCartesianVelocity(const std::array<double, 6>& velocities) {
+  std::lock_guard<std::mutex> lock(write_mutex_);
+  cartesian_velocity_command_ = velocities;
+}
+
+void Robot::initializeCartesianVelocityControl() {
+  assert(isStopped());
+  writeCartesianVelocity({});
+  control_error_ = false;
+  stopped_ = false;
+  control_thread_ = std::make_unique<std::thread>([this]() {
+    try {
+      robot_->control(
+          [this](const franka::RobotState& state, franka::Duration /*period*/) {
+            {
+              std::lock_guard<std::mutex> lock(read_mutex_);
+              current_state_ = state;
+            }
+            std::lock_guard<std::mutex> lock(write_mutex_);
+            franka::CartesianVelocities out(cartesian_velocity_command_);
+            if (finish_) {
+              out.O_dP_EE.fill(0.0);
+              out.motion_finished = true;
+            }
+            return out;
+          },
+          franka::ControllerMode::kJointImpedance, true, franka::kDefaultCutoffFrequency);
+    } catch (const std::exception& e) {
+      control_error_ = true;
+      RCLCPP_ERROR(rclcpp::get_logger("franka_hardware"), "Cartesian velocity control failed: %s",
+                   e.what());
+    }
+  });
 }
 
 void Robot::initializeContinuousReading() {

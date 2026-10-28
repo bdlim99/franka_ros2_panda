@@ -23,4 +23,8 @@
             The franka model example controller evaluates and prints the dynamic model of Franka Emika Robots.
         </description>
     </class>
+    <class name="franka_example_controllers/CartesianVelocityExampleController"
+           type="franka_example_controllers::CartesianVelocityExampleController" base_class_type="controller_interface::ControllerInterface">
+        <description>Periodic Cartesian velocity motion in the base-frame X-Z plane.</description>
+    </class>
 </library>

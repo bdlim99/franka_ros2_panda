@@ -40,6 +40,18 @@
       <xacro:configure_joint joint_name="${ns}_joint6" initial_position="${pi/2}"/>
       <xacro:configure_joint joint_name="${ns}_joint7" initial_position="${pi/4}"/>
 
+      <xacro:macro name="configure_cartesian_velocity" params="axis">
+        <gpio name="${axis}">
+          <command_interface name="cartesian_velocity"/>
+        </gpio>
+      </xacro:macro>
+      <xacro:configure_cartesian_velocity axis="vx"/>
+      <xacro:configure_cartesian_velocity axis="vy"/>
+      <xacro:configure_cartesian_velocity axis="vz"/>
+      <xacro:configure_cartesian_velocity axis="wx"/>
+      <xacro:configure_cartesian_velocity axis="wy"/>
+      <xacro:configure_cartesian_velocity axis="wz"/>
+
     </ros2_control>
   </xacro:macro>
 </robot>
