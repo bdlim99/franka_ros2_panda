@@ -21,10 +21,16 @@ foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
 endforeach()
 
 find_package(Franka REQUIRED)
+find_package(Eigen3 REQUIRED)
 
-add_library(franka_semantic_components SHARED src/franka_robot_state.cpp src/franka_robot_model.cpp)
-target_include_directories(franka_semantic_components PRIVATE include)
-target_link_libraries(franka_semantic_components Franka::Franka)
+add_library(franka_semantic_components SHARED
+  src/franka_robot_state.cpp
+  src/franka_robot_model.cpp
+  src/franka_semantic_component_interface.cpp
+  src/franka_cartesian_pose_interface.cpp
+  src/franka_cartesian_velocity_interface.cpp)
+target_include_directories(franka_semantic_components PUBLIC include)
+target_link_libraries(franka_semantic_components Franka::Franka Eigen3::Eigen)
 ament_target_dependencies(franka_semantic_components
                           Franka
                           ${THIS_PACKAGE_INCLUDE_DEPENDS})
@@ -58,6 +64,13 @@ if(BUILD_TESTING)
     ament_clang_tidy(${CMAKE_BINARY_DIR})
   endif()
 
+  foreach(component IN ITEMS pose velocity)
+    ament_add_gmock(franka_cartesian_${component}_interface_test
+      test/franka_cartesian_${component}_interface_test.cpp)
+    target_link_libraries(franka_cartesian_${component}_interface_test
+      franka_semantic_components)
+  endforeach()
+
   ament_add_gmock(test_franka_robot_state test/franka_robot_state_test.cpp)
   target_include_directories(test_franka_robot_state PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_link_libraries(test_franka_robot_state
@@ -85,5 +98,5 @@ endif()
 
 ament_export_include_directories(include)
 ament_export_libraries(franka_semantic_components)
-ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
+ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS} Eigen3)
 ament_package()

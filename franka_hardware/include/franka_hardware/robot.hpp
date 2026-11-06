@@ -16,6 +16,8 @@
 
 #include <array>
 #include <atomic>
+#include <cstdint>
+#include <condition_variable>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -53,6 +55,20 @@ class Robot {
    * control or reading loop is currently active.
    */
   virtual void initializeTorqueControl();
+
+  /// Starts a Cartesian velocity motion generator using libfranka joint impedance control.
+  virtual void initializeCartesianVelocityControl();
+
+  /// Sends [vx, vy, vz, wx, wy, wz] in the base frame (m/s and rad/s).
+  virtual void writeCartesianVelocity(const std::array<double, 6>& velocities);
+
+  /// Starts a Cartesian pose motion generator using libfranka joint impedance control.
+  virtual void initializeCartesianPoseControl();
+
+  /// Sends a column-major base-to-end-effector transform (translation in metres).
+  virtual void writeCartesianPose(const std::array<double, 16>& pose);
+
+  [[nodiscard]] virtual bool hasControlError() const { return control_error_; }
 
   /// Apply thresholds before starting a control or reading loop.
   virtual void setCollisionBehavior(const CollisionBehavior& behavior) {
@@ -108,5 +124,18 @@ class Robot {
   franka::RobotState current_state_;
 
   std::array<double, 7> tau_command_{};
+  std::array<double, 6> cartesian_velocity_command_{};
+  std::array<double, 16> cartesian_pose_command_{};
+  // libfranka 0.8 callback adapter for the official read/update/write order.
+  void initializeCartesianControl(bool pose_control);
+  void waitForCartesianCommand(const franka::RobotState& state);
+  std::mutex cartesian_mutex_;
+  std::condition_variable cartesian_changed_;
+  bool cartesian_control_active_ = false;
+  bool cartesian_streaming_ = false;
+  uint64_t cartesian_state_sequence_ = 0;
+  uint64_t cartesian_read_sequence_ = 0;
+  uint64_t cartesian_command_state_sequence_ = 0;
+  std::atomic_bool control_error_{false};
 };
 }  // namespace franka_hardware

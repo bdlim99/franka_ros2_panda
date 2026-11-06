@@ -40,6 +40,47 @@
       <xacro:configure_joint joint_name="${ns}_joint6" initial_position="${pi/2}"/>
       <xacro:configure_joint joint_name="${ns}_joint7" initial_position="${pi/4}"/>
 
+      <xacro:macro name="configure_cartesian_velocity" params="axis">
+        <gpio name="${axis}">
+          <command_interface name="cartesian_velocity"/>
+        </gpio>
+      </xacro:macro>
+      <xacro:configure_cartesian_velocity axis="vx"/>
+      <xacro:configure_cartesian_velocity axis="vy"/>
+      <xacro:configure_cartesian_velocity axis="vz"/>
+      <xacro:configure_cartesian_velocity axis="wx"/>
+      <xacro:configure_cartesian_velocity axis="wy"/>
+      <xacro:configure_cartesian_velocity axis="wz"/>
+
+      <!-- Pose control is supplied by FrankaHardwareInterface, not GenericSystem. -->
+      <xacro:unless value="${use_fake_hardware}">
+        <xacro:macro name="configure_cartesian_pose" params="index">
+          <gpio name="${index}">
+            <command_interface name="cartesian_pose_command"/>
+            <state_interface name="cartesian_pose_state"/>
+          </gpio>
+        </xacro:macro>
+        <xacro:configure_cartesian_pose index="0"/>
+        <xacro:configure_cartesian_pose index="1"/>
+        <xacro:configure_cartesian_pose index="2"/>
+        <xacro:configure_cartesian_pose index="3"/>
+        <xacro:configure_cartesian_pose index="4"/>
+        <xacro:configure_cartesian_pose index="5"/>
+        <xacro:configure_cartesian_pose index="6"/>
+        <xacro:configure_cartesian_pose index="7"/>
+        <xacro:configure_cartesian_pose index="8"/>
+        <xacro:configure_cartesian_pose index="9"/>
+        <xacro:configure_cartesian_pose index="10"/>
+        <xacro:configure_cartesian_pose index="11"/>
+        <xacro:configure_cartesian_pose index="12"/>
+        <xacro:configure_cartesian_pose index="13"/>
+        <xacro:configure_cartesian_pose index="14"/>
+        <xacro:configure_cartesian_pose index="15"/>
+        <sensor name="${ns}">
+          <state_interface name="robot_time"/>
+        </sensor>
+      </xacro:unless>
+
     </ros2_control>
   </xacro:macro>
 </robot>
